@@ -1,6 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { motion } from "framer-motion";
 import { Heart, MessageCircle, Shield, Sparkles } from "lucide-react";
 import Header from "@/components/layout/Header";
 import AmbientSound from "@/components/shared/AmbientSound";
@@ -14,8 +16,22 @@ export default function HomePage() {
 
       <main className="flex-1 flex flex-col items-center justify-center px-5 py-12">
         <div className="max-w-lg w-full text-center">
-          {/* 主视觉 */}
-          <div className="text-7xl mb-8">💙</div>
+          {/* 主视觉：蓝心头像（柔和光晕 + 呼吸浮动） */}
+          <motion.div
+            className="relative mb-8 flex justify-center"
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          >
+            <div className="absolute w-40 h-40 rounded-full bg-blue-200/60 blur-2xl" />
+            <Image
+              src="/images/blueheart-avatar.png"
+              alt="蓝心"
+              width={144}
+              height={144}
+              className="relative w-36 h-36 rounded-full object-cover ring-4 ring-white shadow-xl shadow-blue-200/60"
+              priority
+            />
+          </motion.div>
 
           <h1 className="text-3xl font-bold text-slate-800 mb-3 tracking-tight">
             蓝心人生
