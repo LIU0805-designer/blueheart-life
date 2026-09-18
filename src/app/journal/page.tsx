@@ -87,7 +87,7 @@ export default function JournalPage() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-dvh flex flex-col">
       <Header />
 
       <div className="flex-1 overflow-y-auto">

@@ -9,7 +9,7 @@ export default function HomePage() {
   const router = useRouter();
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="min-h-dvh flex flex-col">
       <Header />
 
       <main className="flex-1 flex flex-col items-center justify-center px-5 py-12">
