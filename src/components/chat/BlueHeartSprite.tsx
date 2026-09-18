@@ -17,6 +17,8 @@ export type SpriteState =
 interface Props {
   state: SpriteState;
   emotion?: EmotionTone;
+  /** 紧凑模式：移动端顶部小头像 */
+  compact?: boolean;
 }
 
 /* ──── 情绪 → 光晕颜色 ──── */
@@ -95,6 +97,7 @@ function getRandomMessage(state: SpriteState): string {
 export default function BlueHeartSprite({
   state,
   emotion = "calm",
+  compact = false,
 }: Props) {
   const glowColor = getGlowColor(emotion);
   const spd = spdMul(emotion);
@@ -148,7 +151,13 @@ export default function BlueHeartSprite({
         />
 
         {/* 角色头像 */}
-        <div className="relative w-[85px] h-[85px] sm:w-[100px] sm:h-[100px] rounded-full overflow-hidden ring-2 ring-white/80 shadow-lg shadow-blue-200/40">
+        <div
+          className={`relative rounded-full overflow-hidden ring-2 ring-white/80 shadow-lg shadow-blue-200/40 ${
+            compact
+              ? "w-[52px] h-[52px]"
+              : "w-[85px] h-[85px] sm:w-[100px] sm:h-[100px]"
+          }`}
+        >
           <Image
             src="/images/blueheart-avatar.png"
             alt="蓝心"

@@ -277,6 +277,11 @@ export default function ChatContainer() {
 
       {/* ════ 右侧：聊天区 ════ */}
       <div className="flex flex-col flex-1 min-w-0 relative z-10">
+        {/* 移动端顶部：紧凑精灵（桌面端由左侧栏承担） */}
+        <div className="sm:hidden shrink-0 flex items-center justify-center py-1.5 border-b border-blue-100/50 bg-gradient-to-b from-blue-50/40 to-white">
+          <BlueHeartSprite state={spriteState} emotion={spriteEmotion} compact />
+        </div>
+
         {/* 危机横幅 */}
         {crisisDetected && (
           <CrisisBanner keywords={crisisKeywords} onDismiss={clearCrisis} />
