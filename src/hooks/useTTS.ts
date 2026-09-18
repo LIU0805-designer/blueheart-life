@@ -1,23 +1,17 @@
 /**
- * useTTS — 浏览器语音合成 Hook
+ * useTTS — 聊天朗读 Hook
  *
- * 使用 Web Speech API（免费、无需 API Key）。
- * 自动选择系统最佳中文女声，根据情绪调整语速和音调。
+ * 通过后端 TTS（豆包/百度）把消息合成 MP3 播放。
+ * 不再用浏览器自带语音（Web Speech API）——手机上常无中文语音包或被禁用。
  */
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import {
-  detectEmotion,
-  EMOTION_RATE,
-  EMOTION_PITCH,
-  type EmotionResult,
-} from "@/lib/ai/emotions";
 
 interface SpeakOptions {
   text: string;
   messageId: string;
-  onStart?: (emotion: EmotionResult) => void;
+  onStart?: () => void;
   onEnd?: () => void;
   onError?: (err: string) => void;
 }
@@ -27,110 +21,81 @@ export function useTTS() {
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(
     null
   );
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // 请求序号：用于丢弃过期的朗读请求（用户快速切换播放时避免串音）
+  const reqIdRef = useRef(0);
 
-  /* ──── 获取最佳中文女声 ──── */
-  const getVoice = useCallback((): SpeechSynthesisVoice | null => {
-    const voices = speechSynthesis.getVoices();
-
-    // 优先级：Microsoft Xiaoxiao Online > Xiaoxiao > 其他 zh-CN 女声 > 任意 zh-CN
-    const xiaoxiao = voices.find(
-      (v) => v.lang.startsWith("zh-CN") && v.name.includes("Xiaoxiao")
-    );
-    if (xiaoxiao) return xiaoxiao;
-
-    const female = voices.find(
-      (v) =>
-        v.lang.startsWith("zh-CN") &&
-        (v.name.includes("Female") || v.name.includes("女"))
-    );
-    if (female) return female;
-
-    return voices.find((v) => v.lang.startsWith("zh-CN")) || null;
-  }, []);
-
-  /* ──── 确保声音列表已加载 ──── */
-  const ensureVoices = useCallback(async (): Promise<
-    SpeechSynthesisVoice[]
-  > => {
-    const voices = speechSynthesis.getVoices();
-    if (voices.length > 0) return voices;
-
-    return new Promise((resolve) => {
-      const handler = () => {
-        resolve(speechSynthesis.getVoices());
-        speechSynthesis.removeEventListener("voiceschanged", handler);
-      };
-      speechSynthesis.addEventListener("voiceschanged", handler);
-      speechSynthesis.getVoices(); // 触发加载
-    });
+  /* ──── 停止播放 ──── */
+  const stop = useCallback(() => {
+    reqIdRef.current++;
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setSpeaking(false);
+    setSpeakingMessageId(null);
   }, []);
 
   /* ──── 朗读 ──── */
   const speak = useCallback(
     async (opts: SpeakOptions) => {
-      // 停止当前朗读
-      speechSynthesis.cancel();
+      // 停止当前播放并使旧请求失效
+      audioRef.current?.pause();
+      audioRef.current = null;
+      const reqId = ++reqIdRef.current;
 
-      await ensureVoices();
-      const voice = getVoice();
+      setSpeaking(true);
+      setSpeakingMessageId(opts.messageId);
 
-      if (!voice) {
-        opts.onError?.("未找到可用的中文语音引擎");
-        return;
-      }
+      try {
+        const res = await fetch("/api/audio/tts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: opts.text }),
+        });
 
-      // 情绪检测
-      const emotion = detectEmotion(opts.text);
-      const rate = EMOTION_RATE[emotion.tone];
-      const pitch = EMOTION_PITCH[emotion.tone];
+        // 已被更新的播放覆盖，丢弃本次结果
+        if (reqId !== reqIdRef.current) return;
 
-      const utt = new SpeechSynthesisUtterance(opts.text);
-      utt.voice = voice;
-      utt.lang = "zh-CN";
-      utt.rate = rate;
-      utt.pitch = pitch;
-      utt.volume = 1;
-
-      utt.onstart = () => {
-        setSpeaking(true);
-        setSpeakingMessageId(opts.messageId);
-        opts.onStart?.(emotion);
-      };
-
-      utt.onend = () => {
-        setSpeaking(false);
-        setSpeakingMessageId(null);
-        utteranceRef.current = null;
-        opts.onEnd?.();
-      };
-
-      utt.onerror = (e) => {
-        // 用户主动取消不算错误
-        if (e.error === "canceled" || e.error === "interrupted") {
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          opts.onError?.(data?.error || "语音生成失败");
           setSpeaking(false);
           setSpeakingMessageId(null);
           return;
         }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audioRef.current = audio;
+
+        audio.onended = () => {
+          setSpeaking(false);
+          setSpeakingMessageId(null);
+          URL.revokeObjectURL(url);
+          audioRef.current = null;
+          opts.onEnd?.();
+        };
+        audio.onerror = () => {
+          setSpeaking(false);
+          setSpeakingMessageId(null);
+          URL.revokeObjectURL(url);
+          audioRef.current = null;
+          opts.onError?.("播放出错");
+        };
+
+        await audio.play();
+      } catch (err: any) {
         setSpeaking(false);
         setSpeakingMessageId(null);
-        utteranceRef.current = null;
-        opts.onError?.(e.error || "播放出错");
-      };
-
-      utteranceRef.current = utt;
-      speechSynthesis.speak(utt);
+        audioRef.current = null;
+        // 无用户手势被浏览器拦截（如自动朗读模式）——静默处理，不算错误
+        if (err?.name !== "NotAllowedError") {
+          opts.onError?.(err?.message || "播放出错");
+        }
+      }
     },
-    [ensureVoices, getVoice]
+    []
   );
-
-  /* ──── 停止 ──── */
-  const stop = useCallback(() => {
-    speechSynthesis.cancel();
-    setSpeaking(false);
-    setSpeakingMessageId(null);
-    utteranceRef.current = null;
-  }, []);
 
   return { speak, stop, speaking, speakingMessageId };
 }
