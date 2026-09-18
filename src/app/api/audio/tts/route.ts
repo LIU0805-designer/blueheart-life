@@ -10,6 +10,7 @@
 import { NextRequest } from "next/server";
 import { generateDoubaoSpeech } from "@/lib/audio/doubao-tts";
 import { generateBaiduSpeech } from "@/lib/audio/baidu-tts";
+import { detectEmotion } from "@/lib/ai/emotions";
 
 export async function POST(req: NextRequest) {
   let text = "";
@@ -28,6 +29,9 @@ export async function POST(req: NextRequest) {
   if (text.length > 1500) {
     text = text.slice(0, 1500);
   }
+
+  // 情绪检测 → 决定语速/音调
+  const emotion = detectEmotion(text).tone;
 
   const appId = process.env.DOUBAO_SPEECH_APPID || "";
   const token = process.env.DOUBAO_SPEECH_TOKEN || "";
@@ -53,7 +57,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         if (!baiduReady) throw err;
         console.warn("[TTS] 豆包合成失败，回退百度:", err);
-        buffer = await generateBaiduSpeech(text, apiKey, secretKey);
+        buffer = await generateBaiduSpeech(text, apiKey, secretKey, emotion);
       }
     } else if (baiduReady) {
       buffer = await generateBaiduSpeech(text, apiKey, secretKey);

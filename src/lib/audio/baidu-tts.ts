@@ -7,6 +7,8 @@
  * API 文档：https://ai.baidu.com/ai-doc/SPEECH/Qk38y8lrl
  */
 
+import type { EmotionTone } from "@/lib/ai/emotions";
+
 /* ──── 常量 ──── */
 
 const OAUTH_URL = "https://aip.baidubce.com/oauth/2.0/token";
@@ -23,6 +25,30 @@ const PITCH = 6;
 
 /** 音量 7（1-15，适中） */
 const VOLUME = 7;
+
+/* ──── 情绪 → 语速/音调映射（1-15，默认 5） ──── */
+
+/** 语速：沉思/关切更慢，轻松稍快 */
+const EMOTION_SPD: Record<EmotionTone, number> = {
+  gentle: 4,
+  warm: 5,
+  calm: 5,
+  thoughtful: 3,
+  concerned: 3,
+  firm: 5,
+  light: 6,
+};
+
+/** 音调：温暖/轻松偏高（明亮），沉思/关切偏低（深沉） */
+const EMOTION_PIT: Record<EmotionTone, number> = {
+  gentle: 5,
+  warm: 6,
+  calm: 5,
+  thoughtful: 4,
+  concerned: 4,
+  firm: 5,
+  light: 7,
+};
 
 /* ──── 文本预处理 ──── */
 
@@ -91,7 +117,8 @@ async function getAccessToken(apiKey: string, secretKey: string): Promise<string
 export async function generateBaiduSpeech(
   text: string,
   apiKey: string,
-  secretKey: string
+  secretKey: string,
+  emotion?: EmotionTone
 ): Promise<Buffer> {
   const token = await getAccessToken(apiKey, secretKey);
 
@@ -103,8 +130,8 @@ export async function generateBaiduSpeech(
   params.append("cuid", "blueheart");
   params.append("ctp", "1");
   params.append("lan", "zh");
-  params.append("spd", String(SPEED));
-  params.append("pit", String(PITCH));
+  params.append("spd", String(emotion ? EMOTION_SPD[emotion] : SPEED));
+  params.append("pit", String(emotion ? EMOTION_PIT[emotion] : PITCH));
   params.append("vol", String(VOLUME));
   params.append("per", String(VOICE_PER));
   params.append("aue", "3"); // MP3
