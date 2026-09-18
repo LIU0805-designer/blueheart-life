@@ -12,8 +12,8 @@
 const OAUTH_URL = "https://aip.baidubce.com/oauth/2.0/token";
 const TTS_URL = "https://tsn.baidu.com/text2audio";
 
-/** 度米可 — 百度神经网络女声，清晰自然，情感表现力最强 */
-const VOICE_PER = 4103;
+/** 度小柔 — 百度大模型温柔女声，成熟自然，适合心理陪伴 */
+const VOICE_PER = 6567;
 
 /** 语速 5（1-15，默认 5，自然语速） */
 const SPEED = 5;
