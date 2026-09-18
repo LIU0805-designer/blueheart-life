@@ -1,0 +1,40 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Conversation {
+  id         String    @id @default(cuid())
+  title      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  crisisFlag Boolean   @default(false)
+
+  messages   Message[]
+  journal    JournalEntry?
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  createdAt      DateTime     @default(now())
+}
+
+model JournalEntry {
+  id             String       @id @default(cuid())
+  conversationId String       @unique
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  mood           String       // "positive" | "neutral" | "negative" | "mixed"
+  emotions       String       // JSON array
+  summary        String       // AI 生成的摘要
+  highlights     String       // JSON array of key quotes
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}

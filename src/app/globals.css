@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+/* ===== 蓝心人生 — 白蓝明亮主题 ===== */
+
+:root {
+  /* 暖白背景体系 */
+  --bg-primary: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-hover: #f1f5f9;
+
+  /* 蓝色主色调 */
+  --blue-50: #eff6ff;
+  --blue-100: #dbeafe;
+  --blue-200: #bfdbfe;
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+
+  /* 文字色 */
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+
+  /* 温暖点缀 */
+  --rose: #fb7185;
+  --amber: #f59e0b;
+
+  /* shadcn 兼容 */
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* 蓝心主题色扩展 */
+  --color-blue-50: var(--blue-50);
+  --color-blue-100: var(--blue-100);
+  --color-blue-200: var(--blue-200);
+  --color-blue-400: var(--blue-400);
+  --color-blue-500: var(--blue-500);
+  --color-blue-600: var(--blue-600);
+  --color-blue-700: var(--blue-700);
+}
+
+/* 暗色模式不启用（保持明亮） */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #f8fafc;
+    --bg-surface: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+  }
+}
+
+body {
+  background: linear-gradient(
+    165deg,
+    #f8fafc 0%,
+    #f0f4f8 25%,
+    #f8fafc 50%,
+    #eef2ff 75%,
+    #f8fafc 100%
+  );
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-sans), "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
