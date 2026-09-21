@@ -1,8 +1,8 @@
 /**
  * 豆包（火山引擎）语音合成 TTS 客户端
  *
- * 使用火山引擎语音合成 REST API 一次性合成。
- * 相比于百度 TTS，豆包语音模型 2.0 的自然度和情感表现力远超百度。
+ * 使用火山引擎语音合成 V1 API（大模型音色）。
+ * 相比百度 TTS，豆包大模型音色的自然度和情感表现力更强。
  *
  * 文档：https://www.volcengine.com/docs/6561/79820
  */
@@ -11,26 +11,25 @@
 
 const TTS_URL = "https://openspeech.bytedance.com/api/v1/tts";
 
-// 备用：新版域名
-const TTS_URL_V2 = "https://openspeech.volcengine.com/api/v1/tts";
-
-/** 清新女声 — 基础免费音色，无需额外申请权限 */
-const VOICE_TYPE = "zh_female_qingxin";
+/** 大模型女声 — 自然温暖，适合心理陪伴 */
+const VOICE_TYPE = "zh_female_wanqudashu_moon_bigtts";
 
 /** 语速 1.0（范围 0.2-3，默认 1.0） */
 const SPEED = 1.0;
 
-/** 音量 1.1（范围 0.1-3） */
-const VOLUME = 1.1;
+/** 采样率 24000 Hz */
+const RATE = 24000;
 
-/** 语调 1.05（范围 0.1-3，略微偏高更温暖） */
-const PITCH = 1.05;
+/** 码率 160 kbps */
+const BITRATE = 160;
+
+/** 响度 1.0（范围 0.1-3） */
+const LOUDNESS = 1.0;
 
 /* ──── 文本预处理 ──── */
 
 /**
- * 将练习脚本转为自然口语。
- * 脚本本身已经是直接对用户说的话，这里只做格式清理。
+ * 将文本转为适合 TTS 朗读的自然口语。
  */
 function cleanText(script: string): string {
   return script
@@ -80,15 +79,14 @@ export async function generateDoubaoSpeech(
       voice_type: VOICE_TYPE,
       encoding: "mp3",
       speed_ratio: SPEED,
-      volume_ratio: VOLUME,
-      pitch_ratio: PITCH,
+      rate: RATE,
+      bitrate: BITRATE,
+      loudness_ratio: LOUDNESS,
     },
     request: {
       reqid: crypto.randomUUID(),
       text: cleaned,
-      text_type: "plain",
       operation: "query",
-      with_frontend: 1,
     },
   };
 
@@ -96,7 +94,6 @@ export async function generateDoubaoSpeech(
     method: "POST",
     headers: {
       "Authorization": `Bearer;${config.token}`,
-      "Resource-Id": "volc.tts.default",
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
@@ -107,18 +104,21 @@ export async function generateDoubaoSpeech(
     throw new Error(`豆包 TTS 请求失败 [${res.status}]: ${errText}`);
   }
 
-  // V1 API 返回 JSON，音频是 base64 编码的
   const data = await res.json();
 
-  // 业务错误
-  if (data.code && data.code !== 0) {
-    throw new Error(`豆包 TTS 合成失败 [${data.code}]: ${data.message || JSON.stringify(data)}`);
+  // 成功码是 3000
+  if (data.code !== 3000) {
+    throw new Error(
+      `豆包 TTS 合成失败 [${data.code}]: ${data.message || JSON.stringify(data)}`
+    );
   }
 
-  // 解码 base64 音频
-  const audioBase64 = data.data?.audio || data.audio;
-  if (!audioBase64) {
-    throw new Error(`豆包 TTS 未返回音频数据: ${JSON.stringify(data).slice(0, 200)}`);
+  // 音频是 base64 字符串，直接在 data 字段
+  const audioBase64 = data.data;
+  if (!audioBase64 || typeof audioBase64 !== "string") {
+    throw new Error(
+      `豆包 TTS 未返回音频数据: ${JSON.stringify(data).slice(0, 200)}`
+    );
   }
 
   return Buffer.from(audioBase64, "base64");
