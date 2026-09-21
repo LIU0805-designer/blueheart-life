@@ -10,7 +10,7 @@ import type { ChatMessage } from "@/stores/chat-store";
 /* ──── 简短回复检测 ──── */
 
 export interface MinimalResponse {
-  type: "dismissive" | "speechless" | "minimal";
+  type: "dismissive" | "speechless" | "minimal" | "agreement";
   intensity: "medium" | "high";
 }
 
@@ -22,6 +22,15 @@ export interface MinimalResponse {
  */
 export function detectMinimalResponse(text: string): MinimalResponse | null {
   const trimmed = text.trim();
+
+  // 明确的同意 / 肯定词 → agreement（「中」「没毛病」「要」「这样也行」等）
+  if (
+    /^(好|好的|好呀|好嘞|行|可以|可以的|中|对|来|来吧|要|要的|试试|试试看|没问题|没毛病|这样也行|也行|可以吧|嗯嗯|ok)[！!。.~～]*$/i.test(
+      trimmed
+    )
+  ) {
+    return { type: "agreement", intensity: "medium" };
+  }
 
   // 纯标点 / 省略号 → 无话可说
   if (/^[.。…、，,！!？?]+$/.test(trimmed)) {

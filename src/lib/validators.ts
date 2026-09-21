@@ -12,7 +12,7 @@ export const chatMessageSchema = z.object({
     .object({
       lastMinimalResponse: z
         .object({
-          type: z.enum(["dismissive", "speechless", "minimal"]),
+          type: z.enum(["dismissive", "speechless", "minimal", "agreement"]),
           intensity: z.enum(["medium", "high"]),
         })
         .nullable()

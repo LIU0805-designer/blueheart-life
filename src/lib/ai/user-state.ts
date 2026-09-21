@@ -18,7 +18,7 @@ export interface InputBehaviorSignals {
 
 export interface UserStateSignals {
   lastMinimalResponse: {
-    type: "dismissive" | "speechless" | "minimal";
+    type: "dismissive" | "speechless" | "minimal" | "agreement";
     intensity: "medium" | "high";
   } | null;
   messageTrend: "stable" | "shortening" | "lengthening" | "first_message";
@@ -34,7 +34,9 @@ export function buildUserStateHint(
   const hidden: string[] = [];
 
   const m = signals.lastMinimalResponse;
-  if (m?.type === "speechless") {
+  if (m?.type === "agreement") {
+    visible.push("明确表达了同意或肯定（如「好」「可以」「中」「没毛病」）");
+  } else if (m?.type === "speechless") {
     visible.push("只回了标点或省略号，似乎说不出来");
   } else if (m?.type === "dismissive") {
     visible.push("回复很敷衍（如「哦」「算了」），多半在退缩或不想说");
