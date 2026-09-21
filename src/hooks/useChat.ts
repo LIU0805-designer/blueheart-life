@@ -29,6 +29,10 @@ export function useChat() {
         content: text,
       };
       store.addMessage(userMsg);
+
+      // 读取最新的用户行为信号（addMessage 已同步更新极简回复/消息趋势）
+      const behaviorSnapshot = useChatStore.getState().userBehavior;
+
       store.setStreaming(true);
 
       // 添加空的 AI 回复占位
@@ -41,6 +45,11 @@ export function useChat() {
           body: JSON.stringify({
             message: text,
             ...(store.conversationId ? { conversationId: store.conversationId } : {}),
+            behavior: {
+              lastMinimalResponse: behaviorSnapshot.lastMinimalResponse,
+              messageTrend: behaviorSnapshot.messageTrend,
+              inputBehavior: behaviorSnapshot.inputBehavior,
+            },
           }),
         });
 

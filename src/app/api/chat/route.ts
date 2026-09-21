@@ -9,6 +9,7 @@ import {
   detectCrisisKeywords,
   CRISIS_PROMPT_SUFFIX,
 } from "@/lib/ai/crisis-detector";
+import { buildUserStateHint } from "@/lib/ai/user-state";
 import { chatMessageSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db/prisma";
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { message, conversationId } = parsed.data;
+    const { message, conversationId, behavior } = parsed.data;
 
     // 2. 加载或创建对话
     let conversation;
@@ -78,6 +79,24 @@ export async function POST(req: NextRequest) {
       ? message + CRISIS_PROMPT_SUFFIX
       : message;
 
+    // 6.5 用户行为信号 → 状态提示（让 AI 看见退缩 / 犹豫 / 难以表达）
+    const stateHint = buildUserStateHint(
+      behavior
+        ? {
+            lastMinimalResponse: behavior.lastMinimalResponse ?? null,
+            messageTrend: behavior.messageTrend ?? "stable",
+            inputBehavior: {
+              hesitating: behavior.inputBehavior?.hesitating ?? false,
+              hasRewritten: behavior.inputBehavior?.hasRewritten ?? false,
+              hasAbandoned: behavior.inputBehavior?.hasAbandoned ?? false,
+            },
+          }
+        : null
+    );
+    const systemContent = stateHint
+      ? BLUEHEART_SYSTEM_PROMPT + "\n\n" + stateHint
+      : BLUEHEART_SYSTEM_PROMPT;
+
     // 7. 调用 DeepSeek API 流式响应
     const stream = await deepseek.chat.completions.create({
       model: "deepseek-chat",
@@ -85,7 +104,7 @@ export async function POST(req: NextRequest) {
       temperature: 0.7,
       stream: true,
       messages: [
-        { role: "system", content: BLUEHEART_SYSTEM_PROMPT },
+        { role: "system", content: systemContent },
         ...historyMessages,
         { role: "user", content: userContent },
       ],
