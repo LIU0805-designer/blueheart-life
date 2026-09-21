@@ -28,8 +28,13 @@ export function detectMinimalResponse(text: string): MinimalResponse | null {
     return { type: "speechless", intensity: "high" };
   }
 
-  // 单字回应 → 敷衍 / 不想继续
-  if (/^[嗯哦啊唉哎嗨嘿唔呃额]+$/.test(trimmed) && trimmed.length <= 3) {
+  // 「嗯」——模糊，可能是同意也可能是退缩，交给 AI 结合上下文判断
+  if (/^嗯+$/.test(trimmed)) {
+    return { type: "minimal", intensity: "medium" };
+  }
+
+  // 明确的敷衍 / 叹气语气词 → 退缩
+  if (/^[哦啊唉哎嗨嘿唔呃额]+$/.test(trimmed) && trimmed.length <= 3) {
     return { type: "dismissive", intensity: "high" };
   }
 

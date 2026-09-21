@@ -37,9 +37,9 @@ export function buildUserStateHint(
   if (m?.type === "speechless") {
     visible.push("只回了标点或省略号，似乎说不出来");
   } else if (m?.type === "dismissive") {
-    visible.push("回复很敷衍（如「嗯」「算了」），可能在退缩或不想说");
+    visible.push("回复很敷衍（如「哦」「算了」），多半在退缩或不想说");
   } else if (m?.type === "minimal") {
-    visible.push("回复很短");
+    visible.push("只回了很短的回复（如「嗯」「好」）——结合你刚才的提问判断是同意还是退缩");
   }
 
   if (signals.messageTrend === "shortening") {
