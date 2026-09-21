@@ -48,10 +48,14 @@ export async function POST(req: NextRequest) {
   try {
     let buffer: Buffer;
 
+    // 豆包大模型音色需要火山引擎【企业认证】，个人账号用不了（实测 403 "resource not granted"）。
+    // 拿到企业认证后，把 DOUBAO_ENABLED 改回 true 即可自动启用豆包。
+    const DOUBAO_ENABLED = false;
+
     // 豆包 TTS 单次文本上限约 1024 字节，长文本直接走百度（60KB 上限）
     const isLong = Buffer.byteLength(text, "utf8") > 900;
 
-    if (doubaoReady && !isLong) {
+    if (DOUBAO_ENABLED && doubaoReady && !isLong) {
       try {
         buffer = await generateDoubaoSpeech(text, { appId, token });
       } catch (err) {
@@ -60,7 +64,8 @@ export async function POST(req: NextRequest) {
         buffer = await generateBaiduSpeech(text, apiKey, secretKey, emotion);
       }
     } else if (baiduReady) {
-      buffer = await generateBaiduSpeech(text, apiKey, secretKey);
+      // 百度：短文本带情绪语速/音调，长文本不带
+      buffer = await generateBaiduSpeech(text, apiKey, secretKey, isLong ? undefined : emotion);
     } else {
       // 只剩豆包（兜底），直接尝试
       buffer = await generateDoubaoSpeech(text, { appId, token });
