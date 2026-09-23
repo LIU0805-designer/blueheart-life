@@ -48,9 +48,8 @@ export async function POST(req: NextRequest) {
   try {
     let buffer: Buffer;
 
-    // 豆包大模型音色需要火山引擎【企业认证】，个人账号用不了（实测 403 "resource not granted"）。
-    // 拿到企业认证后，把 DOUBAO_ENABLED 改回 true 即可自动启用豆包。
-    const DOUBAO_ENABLED = false;
+    // 豆包语音合成 2.0（seed-tts-2.0，v3 接口）个人账号可用（开通试用送 2 万字符）。
+    const DOUBAO_ENABLED = true;
 
     // 豆包 TTS 单次文本上限约 1024 字节，长文本直接走百度（60KB 上限）
     const isLong = Buffer.byteLength(text, "utf8") > 900;

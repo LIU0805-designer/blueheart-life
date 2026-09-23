@@ -39,8 +39,6 @@ export default function HomePage() {
           <p className="text-lg text-slate-500 mb-10 leading-relaxed">
             一个 24 小时在线的 AI 心理陪伴者
             <br />
-            用心理学、哲学、教育学、社会学的智慧
-            <br />
             陪你走过人生的难走之路
           </p>
 

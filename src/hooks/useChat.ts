@@ -12,6 +12,19 @@ export function useChat() {
   const store = useChatStore();
   const abortRef = useRef<AbortController | null>(null);
 
+  // 拉取对话列表（用 getState 直写，保持回调稳定，避免 setState 触发自身重建）
+  const loadConversations = useCallback(async () => {
+    try {
+      const res = await fetch("/api/history");
+      if (res.ok) {
+        const data = await res.json();
+        useChatStore.setState({ conversations: data.conversations || [] });
+      }
+    } catch {
+      console.error("加载对话列表失败");
+    }
+  }, []);
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || store.isStreaming) return;
@@ -106,6 +119,8 @@ export function useChat() {
                 store.setConversationId(data.conversationId);
                 // 标记流式完成
                 store.setStreaming(false);
+                // 新对话标题已生成 → 刷新侧边栏列表
+                void loadConversations();
               } else if (data.type === "error") {
                 store.addMessage({
                   id: assistantId,
@@ -128,7 +143,7 @@ export function useChat() {
         store.setStreaming(false);
       }
     },
-    [store]
+    [store, loadConversations]
   );
 
   const loadHistory = useCallback(async (conversationId: string) => {
@@ -137,7 +152,7 @@ export function useChat() {
       if (res.ok) {
         const data = await res.json();
         store.setConversationId(conversationId);
-        // 清空当前消息并加载历史
+        // 清空当前消息并加载历史，同时重置危机状态与行为信号
         useChatStore.setState({
           messages: data.messages.map(
             (m: { id: string; role: string; content: string }) => ({
@@ -146,6 +161,17 @@ export function useChat() {
               content: m.content,
             })
           ),
+          crisisDetected: false,
+          crisisKeywords: [],
+          userBehavior: {
+            lastMinimalResponse: null,
+            messageTrend: "first_message",
+            inputBehavior: {
+              hesitating: false,
+              hasRewritten: false,
+              hasAbandoned: false,
+            },
+          },
         });
       }
     } catch {
@@ -167,6 +193,7 @@ export function useChat() {
     userBehavior: store.userBehavior,
     sendMessage,
     loadHistory,
+    loadConversations,
     newChat,
     clearCrisis: store.clearCrisis,
   };

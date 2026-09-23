@@ -38,3 +38,27 @@ export type StreamEvent =
   | { type: "token"; text: string }
   | { type: "done"; conversationId: string; title: string }
   | { type: "error"; message: string };
+
+// 注册校验
+export const registerSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3, "用户名至少 3 个字符")
+    .max(20, "用户名最多 20 个字符")
+    .refine(
+      (v) => /^[一-龥A-Za-z0-9_]+$/.test(v),
+      "用户名只能包含中英文、数字、下划线"
+    ),
+  password: z.string().min(6, "密码至少 6 位").max(72, "密码最长 72 位"),
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+// 登录校验
+export const loginSchema = z.object({
+  username: z.string().trim().min(1, "请输入用户名"),
+  password: z.string().min(1, "请输入密码"),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;

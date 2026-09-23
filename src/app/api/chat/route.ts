@@ -12,6 +12,7 @@ import {
 import { buildUserStateHint } from "@/lib/ai/user-state";
 import { chatMessageSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db/prisma";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,11 +28,17 @@ export async function POST(req: NextRequest) {
 
     const { message, conversationId, behavior } = parsed.data;
 
-    // 2. 加载或创建对话
+    // 2. 鉴权
+    const user = await getCurrentUser();
+    if (!user) {
+      return Response.json({ error: "未登录" }, { status: 401 });
+    }
+
+    // 3. 加载或创建对话（校验归属）
     let conversation;
     if (conversationId) {
-      conversation = await prisma.conversation.findUnique({
-        where: { id: conversationId },
+      conversation = await prisma.conversation.findFirst({
+        where: { id: conversationId, userId: user.id },
         include: { messages: { orderBy: { createdAt: "asc" }, take: 30 } },
       });
       if (!conversation) {
@@ -43,6 +50,7 @@ export async function POST(req: NextRequest) {
     } else {
       conversation = await prisma.conversation.create({
         data: {
+          userId: user.id,
           messages: {
             create: {
               role: "user",

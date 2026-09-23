@@ -1,30 +1,29 @@
 /**
- * 豆包（火山引擎）语音合成 TTS 客户端
+ * 豆包（火山引擎）语音合成 2.0 TTS 客户端
  *
- * 使用火山引擎语音合成 V1 API（大模型音色）。
- * 相比百度 TTS，豆包大模型音色的自然度和情感表现力更强。
+ * 使用火山引擎语音合成大模型 2.0（Seed-TTS 2.0）v3 单向流式接口。
+ * 相比百度 TTS，豆包大模型音色的自然度和情感表现力更强（全网自然度盲测第一）。
  *
- * 文档：https://www.volcengine.com/docs/6561/79820
+ * 注意：这是 2026 新版 v3 接口（资源 seed-tts-2.0），
+ * 与旧版 v1 接口（资源 seed-tts-1.0，_moon_bigtts 音色需企业认证）完全不同。
+ *
+ * 文档：https://www.volcengine.com/docs/82379/2516290
  */
 
 /* ──── 常量 ──── */
 
-const TTS_URL = "https://openspeech.bytedance.com/api/v1/tts";
+const TTS_URL = "https://openspeech.bytedance.com/api/v3/tts/unidirectional";
+const RESOURCE_ID = "seed-tts-2.0";
 
-/** 大模型女声 — 自然温暖，适合心理陪伴 */
-const VOICE_TYPE = "zh_female_wanqudashu_moon_bigtts";
+/**
+ * 知性灿灿 2.0 — 温柔成熟女声，适合心理陪伴
+ * 其他可选：zh_female_kefunvsheng_uranus_bigtts（暖阳女声）、
+ *          zh_female_shuangkuaisisi_uranus_bigtts（爽快思思）等
+ */
+const SPEAKER = "zh_female_cancan_uranus_bigtts";
 
-/** 语速 1.0（范围 0.2-3，默认 1.0） */
-const SPEED = 1.0;
-
-/** 采样率 24000 Hz */
-const RATE = 24000;
-
-/** 码率 160 kbps */
-const BITRATE = 160;
-
-/** 响度 1.0（范围 0.1-3） */
-const LOUDNESS = 1.0;
+/** 语速 -5（范围 -50~100，0=默认自然，负值更慢更温柔，正值更快） */
+const SPEECH_RATE = -5;
 
 /* ──── 文本预处理 ──── */
 
@@ -57,7 +56,7 @@ export interface DoubaoSpeechConfig {
  * 生成中文语音 MP3
  *
  * @param text   待合成文本
- * @param config 火山引擎语音凭证
+ * @param config 火山引擎语音凭证（APP ID + Access Token）
  * @returns      MP3 Buffer
  */
 export async function generateDoubaoSpeech(
@@ -67,59 +66,66 @@ export async function generateDoubaoSpeech(
   const cleaned = cleanText(text);
 
   const body = {
-    app: {
-      appid: config.appId,
-      token: config.token,
-      cluster: "volcano_tts",
-    },
-    user: {
-      uid: "blueheart",
-    },
-    audio: {
-      voice_type: VOICE_TYPE,
-      encoding: "mp3",
-      speed_ratio: SPEED,
-      rate: RATE,
-      bitrate: BITRATE,
-      loudness_ratio: LOUDNESS,
-    },
-    request: {
-      reqid: crypto.randomUUID(),
+    user: { uid: "blueheart" },
+    req_params: {
       text: cleaned,
-      operation: "query",
+      speaker: SPEAKER,
+      audio_params: {
+        format: "mp3",
+        sample_rate: 24000,
+        speech_rate: SPEECH_RATE,
+      },
     },
   };
 
   const res = await fetch(TTS_URL, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer;${config.token}`,
       "Content-Type": "application/json",
+      "X-Api-Resource-Id": RESOURCE_ID,
+      "X-Api-App-Id": config.appId,
+      "X-Api-Access-Key": config.token,
     },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`豆包 TTS 请求失败 [${res.status}]: ${errText}`);
-  }
-
-  const data = await res.json();
-
-  // 成功码是 3000
-  if (data.code !== 3000) {
     throw new Error(
-      `豆包 TTS 合成失败 [${data.code}]: ${data.message || JSON.stringify(data)}`
+      `豆包 TTS 请求失败 [${res.status}]: ${errText.slice(0, 500)}`
     );
   }
 
-  // 音频是 base64 字符串，直接在 data 字段
-  const audioBase64 = data.data;
-  if (!audioBase64 || typeof audioBase64 !== "string") {
-    throw new Error(
-      `豆包 TTS 未返回音频数据: ${JSON.stringify(data).slice(0, 200)}`
-    );
+  // 响应是 NDJSON：逐行 JSON，code=0 的 data 字段是 base64 音频分片，20000000 表示结束
+  const raw = await res.text();
+  const chunks: Buffer[] = [];
+
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    let parsed: { code?: number; data?: string; message?: string };
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      continue;
+    }
+
+    const code = parsed.code;
+    if (code === 0 && parsed.data) {
+      chunks.push(Buffer.from(parsed.data, "base64"));
+    } else if (code === 20000000) {
+      break; // 正常结束事件
+    } else if (code !== undefined && code !== 0) {
+      throw new Error(
+        `豆包 TTS 流错误 [${code}]: ${parsed.message || JSON.stringify(parsed)}`
+      );
+    }
   }
 
-  return Buffer.from(audioBase64, "base64");
+  if (chunks.length === 0) {
+    throw new Error("豆包 TTS 返回空音频");
+  }
+
+  return Buffer.concat(chunks);
 }

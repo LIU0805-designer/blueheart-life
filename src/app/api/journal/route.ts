@@ -5,12 +5,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { deepseek } from "@/lib/ai/client";
+import { getCurrentUser } from "@/lib/auth/session";
 
 /* ──── 获取日记列表 ──── */
 
 export async function GET() {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
     const entries = await prisma.journalEntry.findMany({
+      where: { conversation: { userId: user.id } },
       orderBy: { createdAt: "desc" },
       take: 30,
     });
@@ -36,13 +43,28 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "未登录" }, { status: 401 });
+    }
+
     const { conversationId } = await req.json();
 
     if (!conversationId) {
       return NextResponse.json({ error: "缺少 conversationId" }, { status: 400 });
     }
 
-    // 检查是否已有日记
+    // 先校验对话归属（越权访问返回 404，不泄露存在性）
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId: user.id },
+      include: { messages: { orderBy: { createdAt: "asc" } } },
+    });
+
+    if (!conversation || conversation.messages.length === 0) {
+      return NextResponse.json({ error: "对话不存在或为空" }, { status: 404 });
+    }
+
+    // 检查是否已有日记（此时已确认对话归当前用户所有）
     const existing = await prisma.journalEntry.findUnique({
       where: { conversationId },
     });
@@ -57,16 +79,6 @@ export async function POST(req: NextRequest) {
         createdAt: existing.createdAt,
         existed: true,
       });
-    }
-
-    // 加载对话消息
-    const conversation = await prisma.conversation.findUnique({
-      where: { id: conversationId },
-      include: { messages: { orderBy: { createdAt: "asc" } } },
-    });
-
-    if (!conversation || conversation.messages.length === 0) {
-      return NextResponse.json({ error: "对话不存在或为空" }, { status: 404 });
     }
 
     // 提取用户消息

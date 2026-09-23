@@ -46,6 +46,7 @@ next-env.d.ts
 *.db
 /output/
 /scripts/
+/public/audio/
 
 # 混进蓝心目录的电影项目素材（不是蓝心的一部分）
 /public/images/female-lead-ref.png

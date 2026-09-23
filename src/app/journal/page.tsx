@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Header from "@/components/layout/Header";
+import AuthGuard from "@/components/auth/AuthGuard";
 import { ArrowLeft, BookOpen, Loader2 } from "lucide-react";
 
 /* ──── 情绪日记条目类型 ──── */
@@ -87,8 +88,9 @@ export default function JournalPage() {
   }, []);
 
   return (
-    <div className="h-dvh flex flex-col">
-      <Header />
+    <AuthGuard>
+      <div className="h-dvh flex flex-col">
+        <Header />
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-8">
@@ -205,6 +207,7 @@ export default function JournalPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </AuthGuard>
   );
 }

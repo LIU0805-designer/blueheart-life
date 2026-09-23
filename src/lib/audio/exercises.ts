@@ -1,24 +1,31 @@
 /**
  * 练习音频缓存层
  *
- * 首次请求时调用百度 TTS 生成 MP3 并缓存到 public/audio/exercises/，
- * 后续请求直接读缓存。避免重复生成、加快响应。
- *
- * 注：练习引导脚本较长（数百字），豆包单次文本上限约 1024 字节且大模型音色
- * 需企业认证（个人账号用不了），故直接用百度 TTS（60KB 上限，足够）。
+ * 首次请求时调用豆包 TTS（seed-tts-2.0，自然度更高）生成 MP3 并缓存到
+ * public/audio/exercises/，后续请求直接读缓存。豆包失败时回退百度。
  */
 
 import fs from "fs/promises";
+import os from "os";
 import path from "path";
 import { generateBaiduSpeech } from "./baidu-tts";
+import { generateDoubaoSpeech } from "./doubao-tts";
 import { EXERCISES } from "@/lib/exercises";
 
-const CACHE_DIR = path.join(process.cwd(), "public", "audio", "exercises");
+// 缓存放临时目录（Vercel 等 serverless 平台文件系统只读，public/ 写不进去）
+const CACHE_DIR = path.join(os.tmpdir(), "blueheart-audio", "exercises");
 
 function getBaiduKeys() {
   return {
     apiKey: process.env.BAIDU_API_KEY || "",
     secretKey: process.env.BAIDU_SECRET_KEY || "",
+  };
+}
+
+function getDoubaoKeys() {
+  return {
+    appId: process.env.DOUBAO_SPEECH_APPID || "",
+    token: process.env.DOUBAO_SPEECH_TOKEN || "",
   };
 }
 
@@ -42,14 +49,27 @@ export async function getExerciseAudio(exerciseId: string): Promise<Buffer> {
     `[Audio] 正在生成疗愈音频: ${exercise.name} (${exercise.script.length} 字符)`
   );
 
-  const { apiKey, secretKey } = getBaiduKeys();
-  if (!apiKey || !secretKey) {
-    throw new Error(
-      "未配置百度 TTS。请在 .env 中设置 BAIDU_API_KEY + BAIDU_SECRET_KEY"
-    );
+  let buffer: Buffer | undefined;
+
+  // 优先豆包（音色更自然，适合疗愈引导），失败回退百度
+  const doubao = getDoubaoKeys();
+  if (doubao.appId && doubao.token) {
+    try {
+      buffer = await generateDoubaoSpeech(exercise.script, doubao);
+    } catch (err) {
+      console.warn("[Audio] 豆包练习音频生成失败，回退百度:", err);
+    }
   }
 
-  const buffer = await generateBaiduSpeech(exercise.script, apiKey, secretKey);
+  if (!buffer) {
+    const { apiKey, secretKey } = getBaiduKeys();
+    if (!apiKey || !secretKey) {
+      throw new Error(
+        "未配置语音服务。请在 .env 中设置 DOUBAO_SPEECH_APPID/TOKEN 或 BAIDU_API_KEY/SECRET_KEY"
+      );
+    }
+    buffer = await generateBaiduSpeech(exercise.script, apiKey, secretKey);
+  }
 
   await fs.mkdir(CACHE_DIR, { recursive: true });
   await fs.writeFile(filePath, buffer);
