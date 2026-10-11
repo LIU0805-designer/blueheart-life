@@ -92,7 +92,27 @@ export default function HomePage() {
 
       {/* 页脚 */}
       <footer className="py-4 text-center text-xs text-slate-400">
-        蓝心是 AI 陪伴者，不替代专业心理治疗。如有紧急情况，请拨打希望24热线：400-161-9995
+        <p className="mb-1">
+          蓝心是 AI 陪伴者，不替代专业心理治疗。如有紧急情况，请拨打希望24热线：400-161-9995
+        </p>
+        <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+          <a
+            href="https://beian.miit.gov.cn/"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-slate-500"
+          >
+            苏ICP备2026073554号
+          </a>
+          <a
+            href="https://beian.mps.gov.cn/#/query/webSearch?code=32070502011472"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-slate-500"
+          >
+            苏公网安备32070502011472号
+          </a>
+        </p>
       </footer>
     </div>
   );

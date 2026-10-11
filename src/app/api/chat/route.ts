@@ -13,6 +13,7 @@ import { buildUserStateHint } from "@/lib/ai/user-state";
 import { chatMessageSchema } from "@/lib/validators";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { checkChatRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,6 +33,12 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     if (!user) {
       return Response.json({ error: "未登录" }, { status: 401 });
+    }
+
+    // 2.5 限流（防刷 DeepSeek 额度）
+    const rate = await checkChatRateLimit(user.id);
+    if (!rate.ok) {
+      return Response.json({ error: rate.message }, { status: 429 });
     }
 
     // 3. 加载或创建对话（校验归属）
