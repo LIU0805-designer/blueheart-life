@@ -52,3 +52,7 @@ next-env.d.ts
 /public/images/female-lead-ref.png
 /public/images/male-lead-ref.png
 /public/images/scene-01-train.png
+
+# AI agent 内部说明（含服务器信息，不要公开）
+CLAUDE.md
+AGENTS.md
